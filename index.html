@@ -222,6 +222,13 @@
   </footer>
 </div>
 
+  <div class="preview-backdrop" id="previewModal" hidden>
+    <div class="preview-box" role="dialog" aria-modal="true" aria-label="Image preview">
+      <button class="preview-close" id="previewClose" type="button" aria-label="Close preview">×</button>
+      <img id="previewImage" alt="Image preview">
+      <div class="preview-caption" id="previewCaption"></div>
+    </div>
+  </div>
 <script>
 "use strict";
 
@@ -729,12 +736,5 @@ if (!window.isSecureContext || !crypto.subtle) {
 }
 </script>
 
-  <div class="preview-backdrop" id="previewModal" hidden>
-    <div class="preview-box" role="dialog" aria-modal="true" aria-label="Image preview">
-      <button class="preview-close" id="previewClose" type="button" aria-label="Close preview">×</button>
-      <img id="previewImage" alt="Image preview">
-      <div class="preview-caption" id="previewCaption"></div>
-    </div>
-  </div>
 </body>
 </html>
