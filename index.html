@@ -102,6 +102,13 @@
     .preview-box img{display:block;max-width:94vw;max-height:78vh;object-fit:contain;background:#080b10}
     .preview-caption{padding:11px 14px;color:#dbe0e8;font-size:12px;border-top:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .preview-close{position:absolute;right:10px;top:10px;width:34px;height:34px;border:1px solid #424c60;border-radius:10px;background:rgba(9,11,16,.9);color:#fff;cursor:pointer;font-size:18px}
+    .result-card{position:relative;min-width:0}
+    .result-card .thumb{cursor:pointer}
+    .result-card .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+    .result-actions{display:flex;gap:8px;padding:9px 10px 10px}
+    .result-download{flex:1;border:1px solid var(--line);background:#151b25;color:#eef2f7;border-radius:9px;padding:8px 10px;cursor:pointer;font-size:12px}
+    .result-download:hover{background:#1b2330}
+    .result-label{padding:8px 10px 0;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     @media(max-width:650px){.file-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.thumb{height:105px}}
     @media(max-width:650px){
       body{padding:14px}
@@ -191,6 +198,7 @@
       <input id="decFile" type="file" accept=".lpx,application/octet-stream" multiple>
 
       <div class="file-grid encrypted-grid" id="decGrid"></div>
+      <div id="decResults" class="file-grid" aria-live="polite"></div>
 
       <div class="controls">
         <div class="field">
@@ -268,6 +276,7 @@ const strengthBar = document.getElementById("strengthBar");
 
 let selectedEnc = [];
 let selectedDec = [];
+let decryptedResults = [];
 
 function bytesToB64u(bytes) {
   let s = "";
@@ -426,6 +435,54 @@ function renderFileGrid(which) {
   }
 }
 
+function renderDecryptedResults() {
+  const grid = document.getElementById("decResults");
+  grid.innerHTML = "";
+  if (!decryptedResults.length) return;
+
+  const heading = document.createElement("div");
+  heading.className = "grid-tools";
+  const count = document.createElement("div");
+  count.className = "count";
+  count.textContent = `${decryptedResults.length} decrypted image${decryptedResults.length === 1 ? "" : "s"}`;
+  heading.appendChild(count);
+  grid.appendChild(heading);
+
+  decryptedResults.forEach(result => {
+    const card = document.createElement("div");
+    card.className = "file-card result-card";
+    const thumb = document.createElement("div");
+    thumb.className = "thumb";
+    const img = document.createElement("img");
+    img.alt = result.name;
+    img.src = result.url;
+    img.addEventListener("click", () => openPreview({name: result.name, size: result.blob.size}, result.url));
+    thumb.appendChild(img);
+
+    const label = document.createElement("div");
+    label.className = "result-label";
+    label.textContent = result.name;
+
+    const actions = document.createElement("div");
+    actions.className = "result-actions";
+    const download = document.createElement("button");
+    download.type = "button";
+    download.className = "result-download";
+    download.textContent = "Download";
+    download.addEventListener("click", () => downloadBlob(result.blob, result.name));
+    actions.appendChild(download);
+
+    card.append(thumb, label, actions);
+    grid.appendChild(card);
+  });
+}
+
+function clearDecryptedResults() {
+  for (const result of decryptedResults) URL.revokeObjectURL(result.url);
+  decryptedResults = [];
+  renderDecryptedResults();
+}
+
 function openPreview(file, url) {
   const modal = document.getElementById("previewModal");
   const image = document.getElementById("previewImage");
@@ -487,6 +544,7 @@ function clearEncrypt() {
 }
 
 function clearDecrypt() {
+  clearDecryptedResults();
   selectedDec = [];
   decFile.value = "";
   decPassword.value = "";
@@ -709,6 +767,9 @@ decryptBtn.addEventListener("click", async () => {
       busyStatus(decStatus, `Decrypting ${i + 1}/${selectedDec.length}: ${file.name}`);
       try {
         const result = await decryptFile(file, password);
+        const previewUrl = URL.createObjectURL(result.blob);
+        decryptedResults.push({ blob: result.blob, name: result.name, url: previewUrl });
+        renderDecryptedResults();
         downloadBlob(result.blob, result.name);
         success++;
       } catch (e) {
@@ -726,6 +787,10 @@ decryptBtn.addEventListener("click", async () => {
   } finally {
     updateButtons();
   }
+});
+
+window.addEventListener("beforeunload", () => {
+  for (const result of decryptedResults) URL.revokeObjectURL(result.url);
 });
 
 if (!window.isSecureContext || !crypto.subtle) {
